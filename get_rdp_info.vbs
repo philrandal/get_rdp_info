@@ -4,13 +4,15 @@
 ' who created it. Whoever you are the credit goes out to you :)
 Option Explicit
 ' Define the variables
-Dim Query1, TotalInputBytes, TotalOutputBytes, FinalOutput, WMIService, Query1Result, Query1Item, qwinstaOutput, Counter, TotalActive, TotalIdle, TotalDisconnected, Version, NumberOfArguments, ArgumentCount, CurrentArgument, License, LicenseMessage, Help, HelpMessage
+Dim FinalOutput, OutputTotalOverallThresholds, OutputTotalOverallThresholdsPerfdata, qwinstaOutput, Counter, DefinedActive, DefinedIdle, DefinedDisconnected, TotalActive, TotalIdle, TotalDisconnected, TotalOverall, Version, NumberOfArguments, NumberOfValues, ArgumentCount, CurrentArgument, DefinedValuesArgumentFlag, DefinedValuesArgumentSplit, License, LicenseMessage, Help, HelpMessage, ExitCode, WarnTotalOverall, CritTotalOverall
 
 ' Version Number
-Version = "2012-10-10"
+Version = "2018-02-22"
 
 ' Count the number of arguments
 NumberOfArguments = Wscript.Arguments.Count
+
+DefinedValuesArgumentFlag = 0
 
 ' Lets look at what arguments were supplied
 For CurrentArgument = 0 to NumberOfArguments-1
@@ -24,7 +26,139 @@ For CurrentArgument = 0 to NumberOfArguments-1
 		License = "yes"
 	End If
 	
+	' Check to see if the -define_values argument was supplied
+	If Wscript.Arguments.Item(CurrentArgument) = "-define_values" Then
+		' Check to see if the -define_values argument value was supplied
+		If NumberOfArguments-1 > CurrentArgument Then
+			DefinedValuesArgumentFlag = 1
+						
+			' Split the values supplied by the user
+			DefinedValuesArgumentSplit = Split(Wscript.Arguments.Item(CurrentArgument+1), ",") 
+			
+			' Count the number of values
+			NumberOfValues = UBound(DefinedValuesArgumentSplit)
+			
+			' Proceed if 3 values were supplied
+			If NumberOfValues = 2 Then
+				DefinedActive = DefinedValuesArgumentSplit(0)
+				DefinedIdle = DefinedValuesArgumentSplit(1)
+				DefinedDisconnected = DefinedValuesArgumentSplit(2)
+			Else
+				' Set the ExitCode to 3 = Unknown
+				ExitCode = 3
+				' Set the FinalOutput message
+				FinalOutput = "You did not supply 3 values for -define_values (i.e. active,idle,disc )"
+				'Wscript.Echo "ExitCode: "& ExitCode
+				' Echo the FinalOutput and abort
+				Wscript.Echo FinalOutput
+				WScript.Quit(ExitCode)
+			End If
+		Else
+			' Nothing was supplied for the -define_values argument
+			' Set the ExitCode to 3 = Unknown
+			ExitCode = 3
+			' Set the FinalOutput message
+			FinalOutput = "You did not supply 3 values for -define_values (i.e. active,idle,disc )"
+			'Wscript.Echo "ExitCode: "& ExitCode
+			' Echo the FinalOutput and abort
+			Wscript.Echo FinalOutput
+			WScript.Quit(ExitCode)
+		End If
+	End If
+
+	' Check to see if the -warn_total_overall argument was supplied
+	If Wscript.Arguments.Item(CurrentArgument) = "-warn_total_overall" Then
+		' Check to see if the -warn_total_overall argument value was supplied
+		If NumberOfArguments-1 > CurrentArgument Then
+			' Check to see if the -warn_total_overall argument value is a number
+			If IsNumeric(Wscript.Arguments.Item(CurrentArgument+1)) Then
+				' Check to see if the -warn_total_overall argument value is a positive number
+				If Wscript.Arguments.Item(CurrentArgument+1) >= 0 Then
+					' Define the value to be used later
+					WarnTotalOverall = Wscript.Arguments.Item(CurrentArgument+1)
+				Else 
+					' Set the ExitCode to 3 = Unknown
+					ExitCode = 3
+					' Set the FinalOutput message
+					FinalOutput = "You did not supply a valid numeric value for -warn_total_overall"
+					'Wscript.Echo "ExitCode: "& ExitCode
+					' Echo the FinalOutput and abort
+					Wscript.Echo FinalOutput
+					WScript.Quit(ExitCode)
+				End If
+			Else 
+				' Set the ExitCode to 3 = Unknown
+				ExitCode = 3
+				' Set the FinalOutput message
+				FinalOutput = "You did not supply a numeric value for -warn_total_overall"
+				'Wscript.Echo "ExitCode: "& ExitCode
+				' Echo the FinalOutput and abort
+				Wscript.Echo FinalOutput
+				WScript.Quit(ExitCode)
+			End If
+		Else 
+			' Set the ExitCode to 3 = Unknown
+			ExitCode = 3
+			' Set the FinalOutput message
+			FinalOutput = "You did not supply a value for -warn_total_overall"
+			'Wscript.Echo "ExitCode: "& ExitCode
+			' Echo the FinalOutput and abort
+			Wscript.Echo FinalOutput
+			WScript.Quit(ExitCode)
+		End If
+	End If
+	
+	' Check to see if the -crit_total_overall argument was supplied
+	If Wscript.Arguments.Item(CurrentArgument) = "-crit_total_overall" Then
+		' Check to see if the -crit_total_overall argument value was supplied
+		If NumberOfArguments-1 > CurrentArgument Then
+			' Check to see if the -crit_total_overall argument value is a number
+			If IsNumeric(Wscript.Arguments.Item(CurrentArgument+1)) Then
+				' Check to see if the -crit_total_overall argument value is a positive number
+				If Wscript.Arguments.Item(CurrentArgument+1) >= 0 Then
+					' Define the value to be used later
+					CritTotalOverall = Wscript.Arguments.Item(CurrentArgument+1)
+				Else 
+					' Set the ExitCode to 3 = Unknown
+					ExitCode = 3
+					' Set the FinalOutput message
+					FinalOutput = "You did not supply a valid numeric value for -crit_total_overall"
+					'Wscript.Echo "ExitCode: "& ExitCode
+					' Echo the FinalOutput and abort
+					Wscript.Echo FinalOutput
+					WScript.Quit(ExitCode)
+				End If
+			Else
+				' Set the ExitCode to 3 = Unknown
+				ExitCode = 3
+				' Set the FinalOutput message
+				FinalOutput = "You did not supply a numeric value for -crit_total_overall"
+				'Wscript.Echo "ExitCode: "& ExitCode
+				' Echo the FinalOutput and abort
+				Wscript.Echo FinalOutput
+				WScript.Quit(ExitCode)
+			End If
+		Else 
+			' Set the ExitCode to 3 = Unknown
+			ExitCode = 3
+			' Set the FinalOutput message
+			FinalOutput = "You did not supply a value for -crit_total_overall"
+			'Wscript.Echo "ExitCode: "& ExitCode
+			' Echo the FinalOutput and abort
+			Wscript.Echo FinalOutput
+			WScript.Quit(ExitCode)
+		End If
+	End IF
+	
 Next
+
+' If -define_values argument was NOT supplied then use the default english values
+If DefinedValuesArgumentFlag = 0 Then
+	DefinedActive = "active"
+	DefinedIdle = "idle"
+	DefinedDisconnected = "disc"
+End If
+
 
 
 ' Check to see if the user is requesting the license
@@ -264,24 +398,28 @@ End If
 If Help = "yes" Then
 	HelpMessage = vbCrLf
 	HelpMessage = HelpMessage & "get_rdp_info.vbs plugin for Nagios version " & Version & vbCrLf
-	HelpMessage = HelpMessage & "Copyright (c) 2012 Troy Lea aka Box293" & vbCrLf
+	HelpMessage = HelpMessage & "Copyright (c) 2018 Troy Lea aka Box293" & vbCrLf
 	HelpMessage = HelpMessage & "plugins@box293.com" & vbCrLf
 	HelpMessage = HelpMessage & vbCrLf
 	HelpMessage = HelpMessage & "The purpose of this plugin is to get information on the Windows Terminal Services / Remote Desktop Session Host Usage and return this back to Nagios." & vbCrLf
 	HelpMessage = HelpMessage & "The plugin runs without any arguments, it will just return a service status of OK." & vbCrLf
-	HelpMessage = HelpMessage & "The plugin is not designed to return critical or warning states, it's core purpose is to gather data for historical analysis." & vbCrLf
+	HelpMessage = HelpMessage & "The plugin allows you to use warning and/or critical thresholds for the total overall sessions." & vbCrLf
 	HelpMessage = HelpMessage & vbCrLf
 	HelpMessage = HelpMessage & "This plugin is designed to be run by NSClient++ on the host you want to check. It is not designed to allow you to check a remote host, this is why there is no option to specify the host name." & vbCrLf
 	HelpMessage = HelpMessage & vbCrLf
-	HelpMessage = HelpMessage & vbCrLf
 	HelpMessage = HelpMessage & "Session Information:" & vbCrLf
-	HelpMessage = HelpMessage & "The plugin will report how many RDP sessions are Active, Idle or Disconnected." & vbCrLf
+	HelpMessage = HelpMessage & "The plugin will report how many RDP sessions are Active, Idle or Disconnected and the total." & vbCrLf
 	HelpMessage = HelpMessage & "This is a way to look at daily trends and understand how loaded your servers are." & vbCrLf
 	HelpMessage = HelpMessage & vbCrLf
 	HelpMessage = HelpMessage & vbCrLf
-	HelpMessage = HelpMessage & "RDP Bytes:" & vbCrLf
-	HelpMessage = HelpMessage & "This plugin will report the total RDP Input and Output bytes of all sessions." & vbCrLf
-	HelpMessage = HelpMessage & "Once again this is a way to look at daily trends and understand how much RDP traffic is generated by your RDP servers. For example users may be transferring files via the RDP protocol, this will be highlighted when looking at the historical data." & vbCrLf
+	HelpMessage = HelpMessage & "Examples:" & vbCrLf
+	HelpMessage = HelpMessage & "Check Total Overall Sessions, warning when more than 50 sessions exist:" & vbCrLf
+	HelpMessage = HelpMessage & vbTab & "cscript /nologo get_rdp_info.vbs -warn_total_overall 50" & vbCrLf
+	HelpMessage = HelpMessage & vbCrLf
+	HelpMessage = HelpMessage & vbCrLf
+	HelpMessage = HelpMessage & "Configuring Nagios and NSClient++" & vbCrLf
+	HelpMessage = HelpMessage & "Check Total Overall Sessions, warning when more than 50 sessions exist, critical @ 75:" & vbCrLf
+	HelpMessage = HelpMessage & vbTab & "cscript /nologo get_rdp_info.vbs -warn_total_overall 50 -crit_total_overall 75" & vbCrLf
 	HelpMessage = HelpMessage & vbCrLf
 	HelpMessage = HelpMessage & vbCrLf
 	HelpMessage = HelpMessage & "Configuring Nagios and NSClient++" & vbCrLf
@@ -337,51 +475,35 @@ If Help = "yes" Then
 End If
 
 
-
-' ############################################################
-' BEGIN InputBytes and OutputBytes data collection
-
-' Set all the totals to 0
-TotalInputBytes = 0
-TotalOutputBytes = 0
-
-' Define the WMI Connection
-Set WMIService = GetObject("winmgmts:\\.\root\cimv2")
-
-' Define the WMI query
-Query1 = "select * from Win32_PerfFormattedData_TermService_TerminalServicesSession"
-
-' Run the WMI query
-Set Query1Result = WMIService.ExecQuery(Query1,,48)
-
-' Loop through the results and count the bytes
-For Each Query1Item In Query1Result
-	' Make sure it's not the services session
-	If InStr(1, Query1Item.Name, "services", 1) = 0 Then
-		' Make sure it's not the console session
-		If InStr(1, Query1Item.Name, "console", 1) = 0 Then
-			' Make sure it's not a down session
-			If InStr(1, Query1Item.Name, "down", 1) = 0 Then
-				'Wscript.Echo "Name: " & Query1Item.Name
-				'Wscript.Echo "InputBytes: " & Query1Item.InputBytes
-				'Wscript.Echo "OutputBytes: " & Query1Item.OutputBytes
-				'Wscript.Echo ""
-				' Make sure it's not a negative value
-				If Query1Item.InputBytes >= 0 Then
-					TotalInputBytes = TotalInputBytes + Query1Item.InputBytes
-				End If
-				' Make sure it's not a negative value
-				If Query1Item.OutputBytes >= 0 Then
-					TotalOutputBytes = TotalOutputBytes + Query1Item.OutputBytes
-				End If
-			End If
+' If a critical value was supplied then is it has to be greater than the warning value
+' Also create the string used in the performance data
+OutputTotalOverallThresholdsPerfdata = ""
+' First check to see if the critical value exists
+If Not IsEmpty(CritTotalOverall) Then
+	' Now check to see if the warning value exists
+	If Not IsEmpty(WarnTotalOverall) Then
+		' Now check to see if the critical value is smaller than the warning value
+		If cInt(CritTotalOverall) < cInt(WarnTotalOverall) Then
+			' Set the ExitCode to 3 = Unknown
+			ExitCode = 3
+			' Set the FinalOutput message
+			FinalOutput = "The value you supplied for -crit_total_overall is smaller than the -warn_total_overall value"
+			'Wscript.Echo "ExitCode: "& ExitCode
+			' Echo the FinalOutput and abort
+			Wscript.Echo FinalOutput
+			WScript.Quit(ExitCode)
+		Else
+			' Define the OutputTotalOverallThresholdsPerfdata
+			OutputTotalOverallThresholdsPerfdata = ";" & WarnTotalOverall & ";" & CritTotalOverall
 		End If
+	Else
+		' Define the OutputTotalOverallThresholdsPerfdata
+		OutputTotalOverallThresholdsPerfdata = ";;" & CritTotalOverall
 	End If
-Next
-
-' END InputBytes and OutputBytes data collection
-' ############################################################
-
+Else
+	' Define the OutputTotalOverallThresholdsPerfdata
+	OutputTotalOverallThresholdsPerfdata = ";" & WarnTotalOverall
+End If
 
 ' ############################################################
 ' BEGIN Session State data collection
@@ -401,22 +523,71 @@ For Counter = 0 to UBound(qwinstaOutput)
 	' First we need to make sure it's not the session services
 	If InStr(1, qwinstaOutput(Counter), "services", 1) = 0 Then
 		' Test for an Active session
-		If InStr(1, qwinstaOutput(Counter), "active", 1) > 0 Then
+		If InStr(1, qwinstaOutput(Counter), DefinedActive, 1) > 0 Then
 			'Wscript.Echo "Active"
 			TotalActive = TotalActive + 1
 		End If
 		' Test for an Idle session
-		If InStr(1, qwinstaOutput(Counter), "idle", 1) > 0 Then
+		If InStr(1, qwinstaOutput(Counter), DefinedIdle, 1) > 0 Then
 			'Wscript.Echo "Idle"
 			TotalIdle = TotalIdle + 1
 		End If
 		' Test for a Disconnected session
-		If InStr(1, qwinstaOutput(Counter), "disc", 1) > 0 Then
+		If InStr(1, qwinstaOutput(Counter), DefinedDisconnected, 1) > 0 Then
 			'Wscript.Echo "Disc"
 			TotalDisconnected = TotalDisconnected + 1
 		End If
 	End If
 Next 
+
+' Calculate the total overall
+TotalOverall = TotalActive + TotalIdle + TotalDisconnected
+'Wscript.Echo "TotalOverall: " & TotalOverall
+'Wscript.Echo "WarnTotalOverall: " & WarnTotalOverall
+'Wscript.Echo "CritTotalOverall: " & CritTotalOverall
+
+OutputTotalOverallThresholds = ""
+' To check the critical value first we must check to see if the warning value exists
+If Not IsEmpty(WarnTotalOverall) Then
+	' Check to see if the critical value exists
+	If Not IsEmpty(CritTotalOverall) Then
+		' Check to see if the current usage is greater than the critical value
+		If Int(TotalOverall) > Int(CritTotalOverall) Then
+			' Set the ExitCode
+			ExitCode = 2
+			' Define the OutputTotalOverallThresholds
+			OutputTotalOverallThresholds = OutputTotalOverallThresholds & ", CRITICAL: Current Usage " & TotalOverall & " EXCEEDS critical threshold of " & CritTotalOverall
+		Else
+			' The current usage was not greater than the critical value, now to check the warning value
+			If Int(TotalOverall) > Int(WarnTotalOverall) Then
+				' Set the ExitCode
+				ExitCode = 1
+				' Define the OutputTotalOverallThresholds
+				OutputTotalOverallThresholds = OutputTotalOverallThresholds & ", Current Usage " & TotalOverall & " EXCEEDS warning threshold of " & WarnTotalOverall
+			End If
+		End If
+	Else
+		' There was not critical value so check to see if the current usage is greater than the warning value
+		If Int(TotalOverall) > Int(WarnTotalOverall) Then
+			' Set the ExitCode
+			ExitCode = 1
+			' Define the OutputTotalOverallThresholds
+			OutputTotalOverallThresholds = OutputTotalOverallThresholds & ", Current Usage " & TotalOverall & " EXCEEDS warning threshold of " & WarnTotalOverall
+		End If
+	End If
+' There was no warning value so we need to do the critical check
+Else
+	' Check to see if the critical value exists
+	If Not IsEmpty(CritTotalOverall) Then
+		' Check to see if the current usage is greater than the critical value
+		If Int(TotalOverall) > Int(CritTotalOverall) Then
+			' Set the ExitCode
+			ExitCode = 2
+			' Define the OutputTotalOverallThresholds
+			OutputTotalOverallThresholds = OutputTotalOverallThresholds & ", CRITICAL: Current Usage " & TotalOverall & " EXCEEDS critical threshold of " & CritTotalOverall
+		End If
+	End If
+End If
 
 
 ' This function is as I found it on the Internet
@@ -438,9 +609,10 @@ Function Cmd(cmdline)
 	End If 
 End Function 
 
+
 ' ############################################################
 ' END Session State data collection
 
-FinalOutput = "Sessions {Active=" & TotalActive & " Idle=" & TotalIdle & " Disconnected=" & TotalDisconnected & "} RDP Bytes {Input=" & TotalInputBytes & " Output=" & TotalOutputBytes & "}|'Active Sessions'=" & TotalActive & " 'Idle Sessions'=" & TotalIdle & " 'Disconnected Sessions'=" & TotalDisconnected & " 'Input Bytes'=" & TotalInputBytes & "Bytes 'Output Bytes'=" & TotalOutputBytes & "Bytes [get_rdp_info]"
+FinalOutput = "Sessions {Total Overall=" & TotalOverall & OutputTotalOverallThresholds & "} {Active=" & TotalActive & "} {Idle=" & TotalIdle & "} {Disconnected=" & TotalDisconnected & "}|'Total Overall Sessions'=" & TotalOverall & OutputTotalOverallThresholdsPerfdata & " 'Active Sessions'=" & TotalActive & " 'Idle Sessions'=" & TotalIdle & " 'Disconnected Sessions'=" & TotalDisconnected
 Wscript.Echo FinalOutput
-WScript.Quit(0)
+WScript.Quit(ExitCode)
